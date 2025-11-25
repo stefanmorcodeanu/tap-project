@@ -8,6 +8,9 @@ A minimal demo: a React/Vite chat UI that posts prompts to an Express API which 
 - Models: Ollama container (HTTP API on port 11434 in compose).
 - Orchestration: `docker-compose.yml` runs `ollama`, `api`, and `ui` for local development.
 
+## UI App
+![Ui App](./docs/ui.png)
+
 ## Run locally
 From project root:
 
@@ -107,6 +110,7 @@ Content-Type: application/json
 ## Diagram
 <!-- keep only the committed SVG file, not the Mermaid source -->
 ![Request flow diagram](./docs/flow-diagram.svg)
+
 
 ## Key notes
 - Backend prepends a SYSTEM instruction, calls Ollama, converts Markdown → HTML, and sanitizes HTML server-side (allowlist: `b`, `i`, `p`, `br`).
