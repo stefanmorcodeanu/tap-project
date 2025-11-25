@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama  # persist models inside the container
+
+  # One-shot: pull your two models *inside the container*
+  ollama-init:
+    image: curlimages/curl:8.8.0
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODEL_A: ${MODEL_A:-gemma3:1b}       # fast/small
+      MODEL_B: ${MODEL_B:-llama3.2:3b}  # slow/accurate
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      '
+      echo "Pulling $MODEL_A and $MODEL_B ...";
+      curl -s -X POST $OLLAMA_HOST/api/pull -H "Content-Type: application/json" -d "{\"name\":\"$MODEL_A\"}" && echo;
+      curl -s -X POST $OLLAMA_HOST/api/pull -H "Content-Type: application/json" -d "{\"name\":\"$MODEL_B\"}" && echo;
+      echo "Done.";
+      '
+    restart: "no"
+
+  api:
+    build: ./api
+    container_name: ai-api
+    environment:
+      PORT: 3000
+      OLLAMA_URL: http://ollama:11434
+      MODEL_A: ${MODEL_A:-gemma3:1b}
+      MODEL_B: ${MODEL_B:-llama3.2:3b}
+      OLLAMA_TIMEOUT_MS: 120000   # give the 8B model time to spin up on first call
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ollama
+      - ollama-init
+
+  ui:
+    build:
+      context: ./ui
+      args:
+        VITE_API_BASE_URL: ${UI_API_BASE_URL:-http://localhost:3000}
+    container_name: model-ui
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  ollama:
